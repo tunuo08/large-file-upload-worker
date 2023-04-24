@@ -1,0 +1,24 @@
+{
+  "name": "large-file-upload-worker",
+  "version": "1.0.2",
+  "description": "Using WebWorker to upload large files, multiple files can be uploaded simultaneously by calculating the unique ID of the files.",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx browser-sync -w"
+  },
+  "module": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tunuo08/large-file-upload-worker.git"
+  },
+  "author": "valo0",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tunuo08/large-file-upload-worker/issues"
+  },
+  "homepage": "https://github.com/tunuo08/large-file-upload-worker#readme",
+  "devDependencies": {
+    "browser-sync": "^2.29.1",
+    "@valo0/large-file-md5-wasm": "file:D:/space/learn/large-file-md5-wasm/pkg"
+  }
+}
