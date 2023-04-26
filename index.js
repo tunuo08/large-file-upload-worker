@@ -9,8 +9,11 @@ const uploader = new FileUploader({
     fileReaderPoolSize: 5,
     chunkSize: 1024 * 1024 * 20
 });
+let progress=document.getElementById('progress-line')
 uploader.addEventListener('hashProgress', (event) => {
     console.log('Hash progress:', event.detail);
+    progress.setAttribute('value',~~(event.detail.progress))
+
 });
 
 uploader.addEventListener('uploadProgress', (event) => {
