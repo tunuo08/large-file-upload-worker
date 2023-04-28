@@ -1,146 +1,96 @@
-# FileUploader
+# Large File Upload Worker
 
-`FileUploader`是一个高效、可扩展的文件上传库，允许分片上传大文件并计算文件哈希。它使用Web Workers进行并行处理，并提供了一个自定义worker脚本路径选项。
+Large File Upload Worker 是一个用于处理大文件上传的 JavaScript 库。它使用 Web Workers 和 FileReader 进行文件的分片和并行上传，同时计算文件的 SHA-1 哈希值。计算哈希值使用了 [Web Crypto API](https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto)。
 
-## 安装(未发布)
+## 特性
 
-使用npm安装：
+- 使用 Web Workers 进行文件上传，不阻塞主线程。
+- 使用 FileReader 读取文件，防止一次性读取大文件导致内存溢出。
+- 计算文件的 SHA-1 哈希值，使用 [Web Crypto API](https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto)。
+- 支持文件上传进度跟踪和错误处理。
+
+## 安装
 
 ```bash
-npm install --save file-uploader-package
+npm install large-file-upload-worker
 ```
 
-或者使用yarn安装：
+## 使用
+
+```javascript
+import FileUploader from 'large-file-upload-worker';
+
+const fileUploader = new FileUploader({
+  workerPoolSize: 5,
+  fileReaderPoolSize: 5,
+  chunkSize: 1024 * 1024,
+  workerScript: './upload-worker.js',
+  algorithm: 'SHA-1',
+});
+
+fileUploader.upload(file, uploadConfig);
+```
+
+## API
+
+### `new FileUploader(options)`
+
+创建一个新的文件上传器实例。
+
+参数:
+
+- `options`: 配置对象。
+    - `workerPoolSize`: Worker 池大小，默认为 5。
+    - `fileReaderPoolSize`: FileReader 池大小，默认为 5。
+    - `chunkSize`: 文件分片大小，默认为 1MB。
+    - `workerScript`: Worker 脚本的路径，需要相对于使用者的环境，默认为 './upload-worker.js'。
+    - `algorithm`: 用于计算文件哈希值的算法，默认为 'SHA-1',其他支持算法请查看 [Web Crypto API](https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto)。
+
+### `fileUploader.upload(file, uploadConfig)`
+
+上传一个文件。
+
+参数:
+
+- `file`: 要上传的文件对象。
+- `uploadConfig`: 上传配置对象。
+    - `url`: 上传的 URL。
+    - `headers`: 上传请求的头部信息。
+    - `params`: 上传请求的参数。
+    - `workerScript`: Worker 脚本的路径，需要相对于使用者的环境，默认为 './upload-worker.js'。
+    - `algorithm`: 用于计算文件哈希值的算法，默认为 'SHA-1'。
+返回一个 Promise，解析为上传结果。
+
+
+## 自定义事件
+
+| 事件名称                 | 返回值                                          | 功能                                             |
+| ------------------------ | ----------------------------------------------- | ------------------------------------------------ |
+| `hashProgress`           | `{ progress, processedSlices, totalSlices }`    | 在文件哈希计算过程中触发，返回当前进度信息       |
+| `hashCompleteEvent`      | `{ hashHex }`                                   | 当文件哈希计算完成时触发                         |
+| `uploadProgress`         | `{ fileHash, index, success, total }`           | 在文件上传过程中触发，返回当前上传的进度信息     |
+| `uploadError`            | `{ fileHash, index, total, error }`             | 当文件上传出错时触发，返回错误信息               |
+| `uploadComplete`         | `{ fileHash, total }`                           | 当文件上传完成时触发                             |
+
+以上信息是根据具体代码实现进行调整的，如果有任何错误或遗漏，请随时告知。
+## 开发和调试
+
+运行以下命令启动开发服务器：
 
 ```bash
-yarn add file-uploader-package
+npm test
 ```
 
-## 使用方法
+此命令将启动 browser-sync，你可以在浏览器中打开 `localhost:3000` 来查看和调试。
 
-1. 导入`FileUploader`：
+## 问题反馈
 
-```javascript
-import FileUploader from 'file-uploader-package';
-```
+如果你在使用过程中遇到问题，欢迎通过 [GitHub Issues](https://github.com/tunuo08/large-file-upload-worker/issues) 提交问题。
 
-2. 创建`FileUploader`实例，并传入选项：
+## 许可证
 
-```javascript
-const options = {
-  workerPoolSize: 5,
-  fileReaderPoolSize: 5,
-  chunkSize: 1024 * 1024,
-  workerScript: './custom-worker.js', // 可选，自定义worker脚本的相对路径
-};
-
-const fileUploader = new FileUploader(options);
-```
-
-3. 上传文件：
-
-```javascript
-fileUploader.upload(file);
-```
-
-4. 监听处理进度事件（可选）：
-
-```javascript
-fileUploader.addEventListener('hashProgress', (event) => {
-  console.log('Hash progress:', event.detail);
-});
-
-fileUploader.addEventListener('uploadProgress', (event) => {
-  console.log('Upload progress:', event.detail);
-});
-```
-
-## 选项
-
-`FileUploader`接受以下选项：
-
-- `workerPoolSize` (Number, 默认值: 5): Web Workers池的大小。
-- `fileReaderPoolSize` (Number, 默认值: 5): FileReader池的大小。
-- `chunkSize` (Number, 默认值: 1024 * 1024): 文件切片的大小（以字节为单位）。
-- `workerScript` (String, 可选): 自定义worker脚本的相对路径。
-
-## 事件
-
-`FileUploader`实例可以触发以下事件：
-
-- `hashProgress`: 当文件哈希计算进度更新时触发。事件的`detail`属性包含一个对象，其中包含`progress`（百分比）、`processedSlices`（已处理的切片数）和`totalSlices`（总切片数）。
-- `uploadProgress`: 当文件片段上传进度更新时触发。事件的`detail`属性包含一个对象，其中包含`index`（当前上传的片段索引）和`total`（总片段数）。
-
-## 自定义worker脚本
-
-您可以编写自定义的worker脚本来处理文件片段的上传。为了实现这个功能，您需要在自定义worker脚本中监听`message`事件，并在收到消息时执行文件片段的上传。一旦上传完成，您应该发送一个包含成功状态的消息。
-
-这是一个自定义worker脚本的示例：
-
-```javascript
-self.addEventListener('message', async (event) => {
-  const { task, fileSlice } = event.data;
-
-  try {
-    // 执行文件片段的上传
-    // ...您的上传代码
-
-    // 上传成功
-    self.postMessage({ success: true });
-  } catch (error) {
-    // 上传失败
-    self.postMessage({ success: false });
-  }
-});
-```
-
-然后在`FileUploader`的选项中指定自定义worker脚本的路径：
-
-```javascript
-import FileUploader from 'file-uploader-package';
-
-const options = {
-  workerPoolSize: 5,
-  fileReaderPoolSize: 5,
-  chunkSize: 1024 * 1024,
-  workerScript: './path/to/your-custom-worker.js', // 自定义worker脚本的相对路径
-};
-
-const fileUploader = new FileUploader(options);
-```
-
-## 示例
-
-以下是一个完整的`FileUploader`使用示例：
-
-```javascript
-import FileUploader from 'file-uploader-package';
-
-const options = {
-  workerPoolSize: 5,
-  fileReaderPoolSize: 5,
-  chunkSize: 1024 * 1024,
-  workerScript: './path/to/your-custom-worker.js', // 可选，自定义worker脚本的相对路径
-};
-
-const fileUploader = new FileUploader(options);
-
-fileUploader.addEventListener('hashProgress', (event) => {
-  console.log('Hash progress:', event.detail);
-});
-
-fileUploader.addEventListener('uploadProgress', (event) => {
-  console.log('Upload progress:', event.detail);
-});
-
-// 假设已经获取了一个文件对象（例如，从input元素中）
-fileUploader.upload(file);
-```
+此项目使用 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
 
 ## 贡献
 
-我们欢迎所有人为这个项目做出贡献。请在提交pull请求之前确保您的更改符合项目的代码风格和质量标准。
-
-## 许可
-
-`FileUploader`使用MIT许可。有关详细信息，请参阅[LICENSE](./LICENSE)文件。
+欢迎任何形式的贡献，包括提出问题、添加新功能、改进文档等。

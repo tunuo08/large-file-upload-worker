@@ -1,24 +1,23 @@
+// upload-worker.js
 self.addEventListener('message', async (event) => {
-    const { type, data, apiUrl, headers } = event.data;
-
-    if (type === 'uploadFileSlice') {
-        const { fileSlice, sliceId } = data;
-
+    const {type, data} = event.data;
+    if (type === 'startWorkUploadFileSlice') {
+        // url 是必填的 需要检验一下
+        const {fileSlice, fileHash, url, headers = {}, params = {}} = data;
         try {
-            const response = await uploadFileSlice(apiUrl, fileSlice, { sliceId }, headers);
-
+            const response = await uploadFileSlice(url, fileSlice, {fileHash, ...params}, headers);
             if (response.status === 200) {
-                self.postMessage({ sliceId, success: true });
+                self.postMessage({fileHash, success: true});
             } else {
-                self.postMessage({ sliceId, success: false, error: response.statusText });
+                self.postMessage({fileHash, success: false, error: response.statusText});
             }
         } catch (error) {
-            self.postMessage({ sliceId, success: false, error: error.message });
+            self.postMessage({fileHash, success: false, error: error.message});
         }
     }
 });
 
-async function uploadFileSlice(apiUrl, fileSlice, params, headersObj) {
+async function uploadFileSlice(url, fileSlice, params, headers) {
     const formData = new FormData();
     formData.append('file', fileSlice);
 
@@ -26,17 +25,16 @@ async function uploadFileSlice(apiUrl, fileSlice, params, headersObj) {
         formData.append(key, value);
     });
 
-    const headers = new Headers();
-    Object.entries(headersObj).forEach(([key, value]) => {
-        headers.append(key, value);
+    const workerHeaders = new Headers();
+    Object.entries(headers).forEach(([key, value]) => {
+        workerHeaders.append(key, value);
     });
 
     const requestOptions = {
         method: 'POST',
-        headers: headers,
+        headers: workerHeaders,
         body: formData,
     };
 
-    const response = await fetch(apiUrl, requestOptions);
-    return response;
+    return await fetch(url, requestOptions);
 }

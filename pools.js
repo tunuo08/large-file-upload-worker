@@ -5,34 +5,39 @@ export class UploadWorkerPool {
     #queue = [];
     #workerScript;
 
-    constructor(poolSize,workerScript = "./worker-script.js" ) {
+    constructor(poolSize, workerScript = "./upload-worker.js") {
         this.#poolSize = poolSize;
         this.#workerScript = workerScript;
     }
 
     // 上传文件
-    async uploadFileSlice(uploadConfig, fileSlice) {
-        const {url, params, headersObj} = uploadConfig
+    async uploadFileSlice(uploadConfig, fileSlice, fileHash) {
+        const {url, params, headers} = uploadConfig
         const worker = await this.#acquireWorker();
         return await new Promise((resolve, reject) => {
             worker.onmessage = (event) => {
-                const {sliceId, success, error} = event.data;
+                const {success, error} = event.data;
                 this.#releaseWorker(worker);
-
                 if (success) {
-                    resolve({sliceId, success});
+                    resolve({fileHash, success});
                 } else {
-                    reject({sliceId, success, error});
+                    reject({fileHash, success, error});
                 }
             };
-            worker.postMessage({type: 'uploadFileSlice', data: {fileSlice, ...params}, url, headersObj}, [fileSlice]);
+            worker.postMessage({
+                type: 'startWorkUploadFileSlice',
+                data: {
+                    fileSlice, fileHash, params, url,
+                    headers
+                },
+            }, [fileSlice]);
         });
     }
 
     // 获取worker
     async #acquireWorker() {
         if (this.#workers.length < this.#poolSize) {
-            const worker = new Worker('./uploader-worker.js');
+            const worker = new Worker(this.workerScript);
             this.#workers.push(worker);
             return worker;
         } else {
@@ -72,10 +77,13 @@ export class UploadWorkerPool {
 
 // FileReader实例池 防止一次读取多个文件造成溢出 (后期考虑根据内存大小扩展fileReader实例)
 export class FileReaderPool {
+    #poolSize;
+    #readers = [];
+    #queue = [];
     constructor(poolSize) {
-        this.poolSize = poolSize;
-        this.readers = [];
-        this.queue = [];
+        this.#poolSize = poolSize;
+        this.#readers = [];
+        this.#queue = [];
     }
 
     async readAsArrayBuffer(blob) {
@@ -94,24 +102,24 @@ export class FileReaderPool {
     }
 
     async acquireReader() {
-        if (this.readers.length < this.poolSize) {
+        if (this.#readers.length < this.#poolSize) {
             const reader = new FileReader();
-            this.readers.push(reader);
+            this.#readers.push(reader);
             return reader;
-        } else {
-            const readerPromise = new Promise((resolve) => {
-                this.queue.push(resolve);
-            });
-            return await readerPromise;
         }
+        const readerPromise = new Promise((resolve) => {
+            this.#queue.push(resolve);
+        });
+        return await readerPromise;
     }
 
+
     releaseReader(reader) {
-        if (this.queue.length > 0) {
-            const resolveNextReader = this.queue.shift();
+        if (this.#queue.length > 0) {
+            const resolveNextReader = this.#queue.shift();
             resolveNextReader(reader);
         } else {
-            this.readers = this.readers.filter((r) => r !== reader);
+            this.#readers = this.#readers.filter((r) => r !== reader);
         }
     }
 }
