@@ -1,12 +1,19 @@
 {
   "name": "large-file-upload-worker",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A JavaScript library for uploading large files using Web Workers and FileReader. The library computes the SHA-1 hash of the files and supports parallel uploads.",
   "main": "main.js",
   "scripts": {
     "test": "npx browser-sync -w"
   },
-  "keywords": ["file upload", "large files", "web worker", "file reader", "hash", "SHA-1"],
+  "keywords": [
+    "file upload",
+    "large files",
+    "web worker",
+    "file reader",
+    "hash",
+    "SHA-1"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tunuo08/large-file-upload-worker.git"
